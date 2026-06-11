@@ -3,6 +3,9 @@
   "name": "roteiro-studio",
   "main": "worker/index.ts",
   "compatibility_date": "2026-05-01",
+  "vars": {
+    "OPENROUTER_MODEL": "anthropic/claude-sonnet-4.6"
+  },
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",

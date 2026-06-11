@@ -8,6 +8,7 @@ import express from 'express'
 import { DEFAULT_OPENROUTER_MODEL, generateWithOpenRouter } from './openrouter.ts'
 import { SYSTEM_PROMPT } from './prompt.ts'
 import { buildUserMessage, validateBody } from './request.ts'
+import { fetchTrends } from './trends.ts'
 
 const PORT = Number(process.env.PORT ?? 3939)
 // Sem CLAUDE_MODEL definido, usa o modelo padrão configurado no Claude Code.
@@ -96,6 +97,15 @@ app.get('/api/health', async (_req, res) => {
     return
   }
   res.json({ ok: true, provider: 'claude-cli', cli: await checkCli() })
+})
+
+app.get('/api/trends', async (_req, res) => {
+  try {
+    res.json({ trends: await fetchTrends() })
+  } catch (error) {
+    console.error('[trends]', error)
+    res.status(502).json({ error: 'Não foi possível carregar os temas em alta agora.' })
+  }
 })
 
 app.post('/api/generate', async (req, res) => {

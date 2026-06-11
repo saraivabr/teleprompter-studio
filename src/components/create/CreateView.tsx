@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useGenerateScript } from '../../hooks/useGenerateScript'
+import { useTrends, type TrendTopic } from '../../hooks/useTrends'
 import { saveScript } from '../../lib/storage'
 import {
   CONTEXT_PRESETS,
@@ -39,7 +40,16 @@ export function CreateView() {
   const [saved, setSaved] = useState(false)
 
   const { phase, text, error, generate, cancel } = useGenerateScript()
+  const { status: trendsStatus, trends, error: trendsError, load: loadTrends } = useTrends()
   const busy = phase === 'connecting' || phase === 'thinking' || phase === 'streaming'
+
+  const applyTrend = (trend: TrendTopic) => {
+    const seed = trend.news[0] ? `${trend.title} — ${trend.news[0]}` : trend.title
+    setIdea((prev) =>
+      prev.trim() ? `${prev.trim()}\n\nGancho com tema em alta: ${seed}` : `Tema em alta: ${seed}`,
+    )
+    setCover('Tema do momento')
+  }
 
   const currentRequest = (): ScriptRequest => ({
     idea,
@@ -87,6 +97,51 @@ export function CreateView() {
             placeholder="Ex.: IA que liga para o cliente dentro do WhatsApp durante o onboarding…"
             rows={7}
           />
+        </div>
+
+        <div className="field">
+          <div className="trends-head">
+            <span className="field-label-text">Temas em alta agora</span>
+            <button
+              type="button"
+              className="btn btn-ghost trends-load"
+              onClick={() => void loadTrends()}
+              disabled={trendsStatus === 'loading'}
+            >
+              {trendsStatus === 'loading'
+                ? 'Buscando…'
+                : trendsStatus === 'done'
+                  ? '↻ Atualizar'
+                  : '🔥 Ver temas em alta'}
+            </button>
+          </div>
+
+          {trendsStatus === 'error' && (
+            <p className="field-hint trends-error" role="alert">
+              {trendsError}
+            </p>
+          )}
+
+          {trendsStatus === 'done' && trends.length > 0 && (
+            <div className="trend-chips">
+              {trends.map((trend, i) => (
+                <button
+                  key={`${trend.title}-${i}`}
+                  type="button"
+                  className="trend-chip"
+                  onClick={() => applyTrend(trend)}
+                  title={trend.news[0] ?? 'Usar como tema do momento'}
+                >
+                  <span className="trend-chip-title">{trend.title}</span>
+                  {trend.traffic && <span className="trend-chip-traffic">{trend.traffic}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <p className="field-hint">
+            Tendências de busca no Google (Brasil). Clique em uma para usar como “Tema do momento”.
+          </p>
         </div>
 
         <fieldset className="field">

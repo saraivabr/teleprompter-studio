@@ -2,6 +2,7 @@
 // POST /api/generate gerando via OpenRouter — mesma lógica do servidor local.
 import { DEFAULT_OPENROUTER_MODEL, generateWithOpenRouter } from '../server/openrouter.ts'
 import { buildUserMessage, validateBody } from '../server/request.ts'
+import { fetchTrends } from '../server/trends.ts'
 
 interface Env {
   ASSETS: Fetcher
@@ -45,6 +46,24 @@ function isAuthorized(request: Request, env: Env): boolean {
     return timingSafeEquals(password, env.APP_PASSWORD)
   } catch {
     return false
+  }
+}
+
+async function handleTrends(ctx: ExecutionContext): Promise<Response> {
+  const cache = caches.default
+  const cacheKey = new Request('https://trends.internal/br')
+  const cached = await cache.match(cacheKey)
+  if (cached) return cached
+  try {
+    const resp = json({ trends: await fetchTrends() })
+    // s-maxage: o edge da Cloudflare guarda por 30min; max-age=0 faz o
+    // browser revalidar sempre, para o botão "Atualizar" funcionar.
+    resp.headers.set('Cache-Control', 'public, s-maxage=1800, max-age=0')
+    ctx.waitUntil(cache.put(cacheKey, resp.clone()))
+    return resp
+  } catch (error) {
+    console.error('[trends]', error)
+    return json({ error: 'Não foi possível carregar os temas em alta agora.' }, 502)
   }
 }
 
@@ -110,6 +129,11 @@ export default {
         provider: 'openrouter',
         model: env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
       })
+    }
+
+    if (url.pathname === '/api/trends') {
+      if (request.method !== 'GET') return json({ error: 'Método não permitido.' }, 405)
+      return handleTrends(ctx)
     }
 
     if (url.pathname === '/api/generate') {

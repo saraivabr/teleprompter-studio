@@ -16,7 +16,10 @@ A visualização renderiza essas marcações (pílulas de pausa, setas coloridas
 
 ## Como rodar
 
-Pré-requisitos: Node.js 20+ e o [Claude Code](https://claude.com/claude-code) instalado e logado (o comando `claude` precisa funcionar no terminal). A geração usa o Claude CLI — **não precisa de chave de API**.
+Pré-requisito: Node.js 20+. A geração funciona com um destes dois provedores:
+
+- **Claude CLI** (padrão): [Claude Code](https://claude.com/claude-code) instalado e logado — sem chave de API.
+- **OpenRouter**: defina `OPENROUTER_API_KEY` no `.env` (crie em [openrouter.ai/keys](https://openrouter.ai/keys)) e a geração passa a usar o OpenRouter (modelo padrão `anthropic/claude-opus-4.8`, configurável via `OPENROUTER_MODEL`).
 
 ```bash
 npm install
@@ -58,6 +61,19 @@ src/
 ```
 
 Por padrão usa o modelo configurado no seu Claude Code. Para forçar outro, defina a variável de ambiente `CLAUDE_MODEL` (ex.: `CLAUDE_MODEL=opus npm run dev`).
+
+## Deploy na Cloudflare (opcional)
+
+O projeto inclui um Worker (`worker/index.ts` + `wrangler.jsonc`) que serve o frontend e gera via OpenRouter no edge:
+
+```bash
+npm run build
+npx wrangler deploy
+npx wrangler secret put OPENROUTER_API_KEY   # obrigatório no Worker
+npx wrangler secret put APP_PASSWORD         # recomendado: protege o site com senha
+```
+
+Ajuste o domínio em `wrangler.jsonc` (`routes[0].pattern`) para o seu.
 
 ## Expondo na rede (opcional)
 

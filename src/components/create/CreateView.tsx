@@ -28,7 +28,11 @@ const PHASE_ANNOUNCEMENT: Record<string, string> = {
   error: 'Ocorreu um erro na geração.',
 }
 
-export function CreateView() {
+interface CreateViewProps {
+  onOpenPrompter: (raw: string) => void
+}
+
+export function CreateView({ onOpenPrompter }: CreateViewProps) {
   const [idea, setIdea] = useState('')
   const [platform, setPlatform] = useState<Platform>('Reels')
   const [duration, setDuration] = useState<Duration>('30 a 60 segundos')
@@ -306,7 +310,10 @@ export function CreateView() {
 
         {phase === 'done' && text && (
           <div className="result-actions">
-            <button type="button" className="btn btn-primary" onClick={() => void handleCopy()}>
+            <button type="button" className="btn btn-primary" onClick={() => onOpenPrompter(text)}>
+              ▶ Abrir no teleprompter
+            </button>
+            <button type="button" className="btn" onClick={() => void handleCopy()}>
               {copied ? '✓ Copiado' : 'Copiar texto'}
             </button>
             <button type="button" className="btn" onClick={handleSave}>

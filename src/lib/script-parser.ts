@@ -1,4 +1,4 @@
-import type { ParsedScript, Section, SectionKind, Token } from './types'
+import type { Line, ParsedScript, Section, SectionKind, Token } from './types'
 
 /**
  * Tokeniza uma linha do roteiro reconhecendo as marcações de teleprompter:
@@ -133,5 +133,15 @@ export function parseScript(raw: string): ParsedScript {
   }
 
   return result
+}
+
+/** Seções que entram no teleprompter (texto de fala — exclui a nota de estratégia). */
+const READABLE_KINDS: ReadonlySet<SectionKind> = new Set(['hook', 'development', 'closing', 'other'])
+
+/** Linhas a serem lidas no teleprompter, na ordem, com a seção de origem. */
+export function prompterLines(parsed: ParsedScript): { section: Section; line: Line }[] {
+  const readable = parsed.sections.filter((s) => READABLE_KINDS.has(s.kind))
+  const source = readable.length > 0 ? readable : parsed.sections
+  return source.flatMap((section) => section.lines.map((line) => ({ section, line })))
 }
 

@@ -15,7 +15,11 @@ function isSeed(script: SavedScript): boolean {
   return script.id.startsWith('seed-')
 }
 
-export function LibraryView() {
+interface LibraryViewProps {
+  onOpenPrompter: (raw: string) => void
+}
+
+export function LibraryView({ onOpenPrompter }: LibraryViewProps) {
   const [version, setVersion] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -85,6 +89,13 @@ export function LibraryView() {
             <button
               type="button"
               className="btn btn-primary"
+              onClick={() => onOpenPrompter(selected.raw)}
+            >
+              ▶ Abrir no teleprompter
+            </button>
+            <button
+              type="button"
+              className="btn"
               onClick={() => void navigator.clipboard.writeText(selected.raw).catch(() => {})}
             >
               Copiar texto

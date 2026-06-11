@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { CreateView } from './components/create/CreateView'
 import { LibraryView } from './components/library/LibraryView'
+import { PrompterView } from './components/prompter/PrompterView'
 import './app.css'
 
 type View = 'create' | 'library'
 
 export default function App() {
   const [view, setView] = useState<View>('create')
+  const [prompterScript, setPrompterScript] = useState<string | null>(null)
 
   return (
     <div className="app-shell">
@@ -38,9 +40,13 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {view === 'create' && <CreateView />}
-        {view === 'library' && <LibraryView />}
+        {view === 'create' && <CreateView onOpenPrompter={setPrompterScript} />}
+        {view === 'library' && <LibraryView onOpenPrompter={setPrompterScript} />}
       </main>
+
+      {prompterScript !== null && (
+        <PrompterView raw={prompterScript} onClose={() => setPrompterScript(null)} />
+      )}
     </div>
   )
 }

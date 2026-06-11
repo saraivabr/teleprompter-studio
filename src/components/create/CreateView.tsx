@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useGenerateScript } from '../../hooks/useGenerateScript'
 import { saveScript } from '../../lib/storage'
 import {
+  CONTEXT_PRESETS,
   COVERS,
   DURATIONS,
   PLATFORMS,
+  type ContextId,
   type Cover,
   type Duration,
   type Platform,
@@ -31,6 +33,7 @@ export function CreateView() {
   const [duration, setDuration] = useState<Duration>('30 a 60 segundos')
   const [moral, setMoral] = useState('')
   const [cover, setCover] = useState<Cover>('Automática')
+  const [context, setContext] = useState<ContextId | null>(null)
   const [extraNotes, setExtraNotes] = useState('')
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -44,6 +47,7 @@ export function CreateView() {
     duration,
     moral: moral.trim() || undefined,
     cover: cover === 'Automática' ? undefined : cover,
+    context: context ?? undefined,
     extraNotes: extraNotes.trim() || undefined,
   })
 
@@ -84,6 +88,36 @@ export function CreateView() {
             rows={7}
           />
         </div>
+
+        <fieldset className="field">
+          <legend>Contexto pronto</legend>
+          <div className="chip-group" role="radiogroup" aria-label="Contexto pronto">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={context === null}
+              className={`chip${context === null ? ' is-active' : ''}`}
+              onClick={() => setContext(null)}
+            >
+              Nenhum
+            </button>
+            {CONTEXT_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                role="radio"
+                aria-checked={context === preset.id}
+                className={`chip${context === preset.id ? ' is-active' : ''}`}
+                onClick={() => setContext(preset.id)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <p className="field-hint">
+            Anexa os fatos do assunto ao pedido — escreva só a ideia, sem precisar explicar tudo.
+          </p>
+        </fieldset>
 
         <fieldset className="field">
           <legend>Plataforma</legend>

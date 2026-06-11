@@ -21,9 +21,37 @@ export const VALID_DURATIONS = [
 
 export const VALID_COVERS = ['Tema universal', 'Tema do momento', 'Cultura pop'] as const
 
+export const VALID_CONTEXTS = ['empresa-ia', 'fellipe-saraiva'] as const
+
 export type Platform = (typeof VALID_PLATFORMS)[number]
 export type Duration = (typeof VALID_DURATIONS)[number]
 export type Cover = (typeof VALID_COVERS)[number]
+export type ContextId = (typeof VALID_CONTEXTS)[number]
+
+/**
+ * Contextos prontos: fatos anexados ao pedido para o usuário não precisar
+ * explicar o assunto a cada roteiro.
+ */
+export const CONTEXT_BLOCKS: Record<ContextId, string> = {
+  'empresa-ia': [
+    'empresa.ia.br — sistema operacional que vive dentro do WhatsApp.',
+    'Uma equipe de 9 funcionárias de IA cuida de vendas, atendimento, financeiro e operações.',
+    'Não é um chatbot: é a sua empresa em IA. O usuário conversa onde já está acostumado, sem instalar nenhum app novo.',
+    'Recursos: chamadas de voz com IA de latência baixa; entende áudio, imagem e vídeo; integrações com Gmail, Google Agenda, Sheets e Drive; grupos dedicados por tema; captura automática de leads com mini-CRM; transcrição de áudio e visão computacional.',
+    'Open source (licença MIT), grátis para todos, feito no Brasil por Fellipe Saraiva (github.com/saraivabr/empresa-ia).',
+    "Slogans oficiais: 'O sistema operacional que vive dentro do WhatsApp'; 'Não é um chatbot. É a sua empresa — em IA'; 'Grátis pra todos'.",
+    'Site: empresa.ia.br',
+  ].join('\n'),
+  'fellipe-saraiva': [
+    'Fellipe Saraiva — consultor e implementador de inteligência artificial. Slogan: "Eu transformo pensamento em operação".',
+    'Tese central: todo mundo tem acesso à IA, pouca gente sabe operar. O erro não é a ferramenta, é a falta de direção.',
+    'Filosofia: estrutura antes da ferramenta, clareza antes da automação.',
+    'Não vende ferramenta nem curso — coloca a IA como camada operacional da empresa, não como ferramenta isolada.',
+    'Serviços: Consultoria de Alavancagem (diagnóstico de vazamento de recursos), Implementação Inteligente (agentes, fluxos e sistemas conectados), Agentes Internos de IA, WhatsApp Inteligente (automação de atendimento e vendas) e Empresa Invisível (operação automatizada nos bastidores).',
+    'Criador da empresa.ia.br (sistema operacional de IA dentro do WhatsApp, open source e grátis).',
+    'Site: saraiva.ai',
+  ].join('\n'),
+}
 
 export interface GenerateRequest {
   idea: string
@@ -31,12 +59,16 @@ export interface GenerateRequest {
   duration: Duration
   moral?: string
   cover?: Cover
+  context?: ContextId
   extraNotes?: string
 }
 
 export function validateBody(body: unknown): GenerateRequest | string {
   if (typeof body !== 'object' || body === null) return 'Corpo da requisição inválido.'
-  const { idea, platform, duration, moral, cover, extraNotes } = body as Record<string, unknown>
+  const { idea, platform, duration, moral, cover, context, extraNotes } = body as Record<
+    string,
+    unknown
+  >
 
   if (typeof idea !== 'string' || idea.trim().length === 0) {
     return 'Descreva a ideia ou tema do vídeo.'
@@ -59,6 +91,9 @@ export function validateBody(body: unknown): GenerateRequest | string {
   if (cover !== undefined && !VALID_COVERS.includes(cover as Cover)) {
     return 'Capa de tema inválida.'
   }
+  if (context !== undefined && !VALID_CONTEXTS.includes(context as ContextId)) {
+    return 'Contexto inválido.'
+  }
   if (extraNotes !== undefined && typeof extraNotes !== 'string') {
     return 'Observações extras inválidas.'
   }
@@ -72,6 +107,7 @@ export function validateBody(body: unknown): GenerateRequest | string {
     duration: duration as Duration,
     moral: typeof moral === 'string' && moral.trim() ? moral.trim() : undefined,
     cover: cover as Cover | undefined,
+    context: context as ContextId | undefined,
     extraNotes: typeof extraNotes === 'string' && extraNotes.trim() ? extraNotes.trim() : undefined,
   }
 }
@@ -82,6 +118,7 @@ export function buildUserMessage({
   duration,
   moral,
   cover,
+  context,
   extraNotes,
 }: GenerateRequest): string {
   const lines = [
@@ -91,6 +128,13 @@ export function buildUserMessage({
     'TEMA / IDEIA BRUTA:',
     idea,
   ]
+  if (context) {
+    lines.push(
+      '',
+      'CONTEXTO SOBRE O ASSUNTO (fatos reais — use-os como base do roteiro):',
+      CONTEXT_BLOCKS[context],
+    )
+  }
   if (moral) {
     lines.push('', 'MORAL DA HISTÓRIA (aponte o roteiro sutilmente para isto):', moral)
   }

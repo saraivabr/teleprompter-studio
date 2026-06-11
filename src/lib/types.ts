@@ -16,9 +16,16 @@ export const DURATIONS = [
 
 export const COVERS = ['Automática', 'Tema universal', 'Tema do momento', 'Cultura pop'] as const
 
+/** Contextos prontos — os fatos completos vivem no servidor (server/request.ts). */
+export const CONTEXT_PRESETS = [
+  { id: 'empresa-ia', label: 'empresa.ia.br' },
+  { id: 'fellipe-saraiva', label: 'Fellipe Saraiva' },
+] as const
+
 export type Platform = (typeof PLATFORMS)[number]
 export type Duration = (typeof DURATIONS)[number]
 export type Cover = (typeof COVERS)[number]
+export type ContextId = (typeof CONTEXT_PRESETS)[number]['id']
 
 export interface ScriptRequest {
   idea: string
@@ -28,6 +35,8 @@ export interface ScriptRequest {
   moral?: string
   /** Tipo de "capa" (tema interessante) usado para chamar atenção. */
   cover?: Cover
+  /** Contexto pronto anexado ao pedido (fatos sobre o assunto). */
+  context?: ContextId
   extraNotes?: string
 }
 

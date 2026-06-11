@@ -35,6 +35,10 @@ npm start
 ## Funcionalidades
 
 - **Criar** — descreva a ideia, escolha plataforma e duração; o roteiro chega em streaming, com as seções e marcações formatadas.
+- **Moral da história** — informe o que você quer vender/ensinar/fazer o público acreditar, e o roteiro inteiro é desenhado para apontar sutilmente até lá.
+- **Capa do tema** — escolha o tipo de "capa" que chama atenção antes de entrar no assunto: tema universal (relacionamento, família, morte e vida…), tema do momento ou cultura pop.
+- **Gatilhos psicológicos** — todo roteiro aplica deliberadamente gatilhos de retenção (Efeito A-HA, contraste de emoções, lacuna da curiosidade, imagens mentais) e storytelling de conflito → mudança.
+- **🧠 Estratégia do roteiro** — cada roteiro termina com um bloco analítico mostrando qual capa foi usada, qual a moral da história e quais gatilhos foram aplicados em cada parte — para você treinar o olho e enxergar os mecanismos.
 - **Copiar texto** — copia o roteiro bruto para colar em qualquer teleprompter.
 - **Biblioteca** — salve roteiros no navegador (localStorage) e reabra depois.
 

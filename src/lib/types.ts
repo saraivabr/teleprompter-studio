@@ -14,13 +14,20 @@ export const DURATIONS = [
   '5 a 10 minutos',
 ] as const
 
+export const COVERS = ['Automática', 'Tema universal', 'Tema do momento', 'Cultura pop'] as const
+
 export type Platform = (typeof PLATFORMS)[number]
 export type Duration = (typeof DURATIONS)[number]
+export type Cover = (typeof COVERS)[number]
 
 export interface ScriptRequest {
   idea: string
   platform: Platform
   duration: Duration
+  /** Para onde o roteiro aponta: o que vender/ensinar/fazer acreditar. */
+  moral?: string
+  /** Tipo de "capa" (tema interessante) usado para chamar atenção. */
+  cover?: Cover
   extraNotes?: string
 }
 
@@ -47,7 +54,7 @@ export interface Line {
   tokens: Token[]
 }
 
-export type SectionKind = 'hook' | 'development' | 'closing' | 'other'
+export type SectionKind = 'hook' | 'development' | 'closing' | 'strategy' | 'other'
 
 export interface Section {
   kind: SectionKind

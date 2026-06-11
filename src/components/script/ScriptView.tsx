@@ -8,6 +8,7 @@ const SECTION_ICON: Record<SectionKind, string> = {
   hook: '🎯',
   development: '📱',
   closing: '⚡',
+  strategy: '🧠',
   other: '·',
 }
 

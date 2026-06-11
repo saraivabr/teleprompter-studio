@@ -49,6 +49,25 @@
   color: oklch(82% 0.12 27);
 }
 
+/* Estratégia do roteiro — nota analítica, não texto para gravar */
+.section-strategy {
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
+}
+
+.section-strategy .section-label {
+  color: var(--color-up);
+}
+
+.section-strategy .script-line {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-dim);
+}
+
 .script-line {
   font-size: var(--text-lg);
   line-height: 1.75;

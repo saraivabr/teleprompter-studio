@@ -65,6 +65,12 @@
   border-color: var(--color-border-strong);
 }
 
+.field-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+  line-height: 1.4;
+}
+
 .chip-group {
   display: flex;
   flex-wrap: wrap;

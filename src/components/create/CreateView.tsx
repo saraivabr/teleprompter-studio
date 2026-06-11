@@ -1,11 +1,20 @@
 import { useState } from 'react'
 import { useGenerateScript } from '../../hooks/useGenerateScript'
 import { saveScript } from '../../lib/storage'
-import { DURATIONS, PLATFORMS, type Duration, type Platform, type ScriptRequest } from '../../lib/types'
+import {
+  COVERS,
+  DURATIONS,
+  PLATFORMS,
+  type Cover,
+  type Duration,
+  type Platform,
+  type ScriptRequest,
+} from '../../lib/types'
 import { ScriptView } from '../script/ScriptView'
 import './create.css'
 
 const IDEA_MAX = 12_000
+const MORAL_MAX = 2_000
 const NOTES_MAX = 4_000
 
 const PHASE_ANNOUNCEMENT: Record<string, string> = {
@@ -20,6 +29,8 @@ export function CreateView() {
   const [idea, setIdea] = useState('')
   const [platform, setPlatform] = useState<Platform>('Reels')
   const [duration, setDuration] = useState<Duration>('30 a 60 segundos')
+  const [moral, setMoral] = useState('')
+  const [cover, setCover] = useState<Cover>('Automática')
   const [extraNotes, setExtraNotes] = useState('')
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -31,6 +42,8 @@ export function CreateView() {
     idea,
     platform,
     duration,
+    moral: moral.trim() || undefined,
+    cover: cover === 'Automática' ? undefined : cover,
     extraNotes: extraNotes.trim() || undefined,
   })
 
@@ -106,6 +119,39 @@ export function CreateView() {
               </button>
             ))}
           </div>
+        </fieldset>
+
+        <div className="field">
+          <label htmlFor="moral">Moral da história (opcional)</label>
+          <textarea
+            id="moral"
+            value={moral}
+            maxLength={MORAL_MAX}
+            onChange={(e) => setMoral(e.target.value)}
+            placeholder="Para onde apontar a atenção: o que você quer vender, ensinar ou fazer o público acreditar…"
+            rows={2}
+          />
+        </div>
+
+        <fieldset className="field">
+          <legend>Capa do tema</legend>
+          <div className="chip-group" role="radiogroup" aria-label="Capa do tema">
+            {COVERS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={cover === c}
+                className={`chip${cover === c ? ' is-active' : ''}`}
+                onClick={() => setCover(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <p className="field-hint">
+            A “capa” é o tema interessante que chama atenção antes de você entrar no assunto.
+          </p>
         </fieldset>
 
         <div className="field">

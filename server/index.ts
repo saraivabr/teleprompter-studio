@@ -27,19 +27,24 @@ const VALID_DURATIONS = [
   '5 a 10 minutos',
 ] as const
 
+const VALID_COVERS = ['Tema universal', 'Tema do momento', 'Cultura pop'] as const
+
 type Platform = (typeof VALID_PLATFORMS)[number]
 type Duration = (typeof VALID_DURATIONS)[number]
+type Cover = (typeof VALID_COVERS)[number]
 
 interface GenerateRequest {
   idea: string
   platform: Platform
   duration: Duration
+  moral?: string
+  cover?: Cover
   extraNotes?: string
 }
 
 function validateBody(body: unknown): GenerateRequest | string {
   if (typeof body !== 'object' || body === null) return 'Corpo da requisição inválido.'
-  const { idea, platform, duration, extraNotes } = body as Record<string, unknown>
+  const { idea, platform, duration, moral, cover, extraNotes } = body as Record<string, unknown>
 
   if (typeof idea !== 'string' || idea.trim().length === 0) {
     return 'Descreva a ideia ou tema do vídeo.'
@@ -53,6 +58,15 @@ function validateBody(body: unknown): GenerateRequest | string {
   if (!VALID_DURATIONS.includes(duration as Duration)) {
     return 'Duração inválida.'
   }
+  if (moral !== undefined && typeof moral !== 'string') {
+    return 'Moral da história inválida.'
+  }
+  if (typeof moral === 'string' && moral.length > 2_000) {
+    return 'A moral da história é longa demais.'
+  }
+  if (cover !== undefined && !VALID_COVERS.includes(cover as Cover)) {
+    return 'Capa de tema inválida.'
+  }
   if (extraNotes !== undefined && typeof extraNotes !== 'string') {
     return 'Observações extras inválidas.'
   }
@@ -64,11 +78,13 @@ function validateBody(body: unknown): GenerateRequest | string {
     idea: idea.trim(),
     platform: platform as Platform,
     duration: duration as Duration,
-    extraNotes: typeof extraNotes === 'string' ? extraNotes.trim() : undefined,
+    moral: typeof moral === 'string' && moral.trim() ? moral.trim() : undefined,
+    cover: cover as Cover | undefined,
+    extraNotes: typeof extraNotes === 'string' && extraNotes.trim() ? extraNotes.trim() : undefined,
   }
 }
 
-function buildUserMessage({ idea, platform, duration, extraNotes }: GenerateRequest): string {
+function buildUserMessage({ idea, platform, duration, moral, cover, extraNotes }: GenerateRequest): string {
   const lines = [
     `PLATAFORMA: ${platform}`,
     `DURAÇÃO ALVO: ${duration}`,
@@ -76,6 +92,15 @@ function buildUserMessage({ idea, platform, duration, extraNotes }: GenerateRequ
     'TEMA / IDEIA BRUTA:',
     idea,
   ]
+  if (moral) {
+    lines.push('', 'MORAL DA HISTÓRIA (aponte o roteiro sutilmente para isto):', moral)
+  }
+  if (cover) {
+    lines.push(
+      '',
+      `CAPA DO TEMA: ${cover} — abra o roteiro chamando atenção com um tema desse tipo antes de entrar no assunto.`,
+    )
+  }
   if (extraNotes) {
     lines.push('', 'OBSERVAÇÕES ADICIONAIS:', extraNotes)
   }

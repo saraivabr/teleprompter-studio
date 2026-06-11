@@ -44,6 +44,7 @@ function detectSection(line: string): { kind: SectionKind; label: string } | nul
   if (/🎯|^HOOK\b/.test(compact)) return { kind: 'hook', label: 'Hook' }
   if (/📱|^DESENVOLVIMENTO\b/.test(compact)) return { kind: 'development', label: 'Desenvolvimento' }
   if (/⚡|^FECHAMENTO\b/.test(compact)) return { kind: 'closing', label: 'Fechamento' }
+  if (/🧠|^ESTRAT[ÉE]GIA\b/.test(compact)) return { kind: 'strategy', label: 'Estratégia do roteiro' }
   return null
 }
 

@@ -1,0 +1,107 @@
+.library-view {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .library-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: sticky;
+  top: var(--space-5);
+}
+
+@media (max-width: 900px) {
+  .library-list {
+    position: static;
+  }
+}
+
+.library-item {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--duration-fast) ease;
+}
+
+.library-item:hover {
+  border-color: var(--color-border-strong);
+}
+
+.library-item.is-active {
+  border-color: oklch(80% 0.16 75 / 0.5);
+  background: var(--color-amber-soft);
+}
+
+.library-item-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+}
+
+.library-item-title {
+  font-weight: 600;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+}
+
+.library-item-meta {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+.library-item-delete {
+  padding: 0 var(--space-3);
+  color: var(--color-text-faint);
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.library-item-delete:hover {
+  color: oklch(82% 0.12 27);
+  background: var(--color-rec-soft);
+}
+
+.library-detail {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.library-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.library-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  text-align: center;
+  color: var(--color-text-faint);
+  padding: var(--space-7);
+  min-height: 320px;
+}

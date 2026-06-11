@@ -1,0 +1,73 @@
+.app-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand h1 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.brand h1 em {
+  font-style: normal;
+  color: var(--color-amber);
+}
+
+.brand-rec {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-rec);
+  box-shadow: 0 0 14px oklch(62% 0.23 27 / 0.8);
+  animation: pulse-rec 2.2s ease-in-out infinite;
+}
+
+.app-header nav {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: var(--space-1);
+}
+
+.nav-tab {
+  padding: 0.45rem 1.2rem;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-dim);
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.nav-tab:hover {
+  color: var(--color-text);
+}
+
+.nav-tab.is-active {
+  background: var(--color-amber-soft);
+  color: var(--color-amber);
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+}

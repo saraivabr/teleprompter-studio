@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SEED_SCRIPTS } from '../../lib/seed-scripts'
 import { deleteScript, listScripts } from '../../lib/storage'
 import type { SavedScript } from '../../lib/types'
 import { ScriptView } from '../script/ScriptView'
@@ -10,11 +11,15 @@ function formatDate(timestamp: number): string {
   )
 }
 
+function isSeed(script: SavedScript): boolean {
+  return script.id.startsWith('seed-')
+}
+
 export function LibraryView() {
   const [version, setVersion] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const scripts = useMemo(() => listScripts(), [version])
+  const scripts = useMemo(() => [...listScripts(), ...SEED_SCRIPTS], [version])
   const selected: SavedScript | null = scripts.find((s) => s.id === selectedId) ?? scripts[0] ?? null
 
   const handleDelete = (id: string) => {
@@ -51,18 +56,25 @@ export function LibraryView() {
                 {script.request.idea.length > 64 ? '…' : ''}
               </span>
               <span className="library-item-meta">
-                {script.request.platform} · {script.request.duration} · {formatDate(script.createdAt)}
+                {isSeed(script) ? (
+                  <span className="seed-badge">★ Pronto</span>
+                ) : (
+                  formatDate(script.createdAt)
+                )}{' '}
+                · {script.request.platform} · {script.request.duration}
               </span>
             </button>
-            <button
-              type="button"
-              className="library-item-delete"
-              onClick={() => handleDelete(script.id)}
-              aria-label="Excluir roteiro"
-              title="Excluir"
-            >
-              ✕
-            </button>
+            {!isSeed(script) && (
+              <button
+                type="button"
+                className="library-item-delete"
+                onClick={() => handleDelete(script.id)}
+                aria-label="Excluir roteiro"
+                title="Excluir"
+              >
+                ✕
+              </button>
+            )}
           </div>
         ))}
       </aside>

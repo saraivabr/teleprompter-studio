@@ -19,6 +19,81 @@
   background: oklch(8% 0.006 70 / 0.9);
 }
 
+/* Câmera ao vivo de fundo (espelhada como selfie; a gravação sai correta) */
+.prompter-camera {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  z-index: 0;
+}
+
+/* Escurece a imagem para o texto continuar legível por cima */
+.prompter-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    oklch(10% 0.008 70 / 0.55),
+    oklch(10% 0.008 70 / 0.35) 40%,
+    oklch(10% 0.008 70 / 0.7)
+  );
+  pointer-events: none;
+}
+
+/* Selo de gravação */
+.prompter-rec {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-5);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: oklch(82% 0.12 27);
+  background: oklch(14% 0.01 70 / 0.85);
+  border: 1px solid oklch(62% 0.23 27 / 0.4);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  backdrop-filter: blur(6px);
+}
+
+.rec-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--color-rec);
+  box-shadow: 0 0 10px oklch(62% 0.23 27 / 0.9);
+  animation: pulse-rec 1.1s ease-in-out infinite;
+}
+
+.prompter-cam-error {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  max-width: 90vw;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: oklch(82% 0.12 27);
+  background: var(--color-rec-soft);
+  border: 1px solid oklch(62% 0.23 27 / 0.4);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+}
+
+/* O texto e a guia ficam acima da câmera */
+.prompter-viewport {
+  z-index: 2;
+}
+
 /* Barra de progresso de leitura */
 .prompter-progress {
   position: absolute;

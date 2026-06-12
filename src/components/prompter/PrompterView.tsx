@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAutoScroll } from '../../hooks/useAutoScroll'
+import { useCamera } from '../../hooks/useCamera'
 import { parseScript, prompterLines } from '../../lib/script-parser'
 import { ScriptLine } from '../script/ScriptLine'
 import './prompter.css'
+
+function formatTime(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
 
 const SPEED_MIN = 20
 const SPEED_MAX = 280
@@ -45,6 +52,17 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
     contentRef,
     viewportRef,
   })
+  const camera = useCamera()
+
+  const toggleCamera = () => {
+    if (camera.status === 'on') camera.stop()
+    else if (camera.status !== 'requesting') void camera.start()
+  }
+
+  const toggleRecording = () => {
+    if (camera.recording) camera.stopRecording()
+    else camera.startRecording()
+  }
 
   // Abre como modal nativo: foco preso, Escape e restauração de foco grátis.
   useEffect(() => {
@@ -148,6 +166,32 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
       onClose={onClose}
       onKeyDown={onKeyDown}
     >
+      {camera.status === 'on' && (
+        <>
+          <video
+            ref={camera.attach}
+            className="prompter-camera"
+            autoPlay
+            playsInline
+            muted
+            aria-hidden="true"
+          />
+          <div className="prompter-scrim" aria-hidden="true" />
+        </>
+      )}
+
+      {camera.recording && (
+        <div className="prompter-rec" aria-live="polite">
+          <span className="rec-dot" aria-hidden="true" /> REC {formatTime(camera.seconds)}
+        </div>
+      )}
+
+      {camera.error && (
+        <p className="prompter-cam-error" role="alert">
+          {camera.error}
+        </p>
+      )}
+
       <div className="prompter-progress" aria-hidden="true">
         <span style={{ transform: `scaleX(${progress})` }} />
       </div>
@@ -186,6 +230,27 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
         <button type="button" className="btn btn-ghost" onClick={close}>
           ✕ Sair <kbd>Esc</kbd>
         </button>
+
+        <div className="control-cluster">
+          <button
+            type="button"
+            className={`btn${camera.status === 'on' ? ' btn-rec' : ''}`}
+            onClick={toggleCamera}
+            aria-pressed={camera.status === 'on'}
+            disabled={camera.status === 'requesting'}
+          >
+            {camera.status === 'on' ? '📷 Câmera ligada' : camera.status === 'requesting' ? 'Abrindo…' : '📷 Câmera'}
+          </button>
+          {camera.status === 'on' && (
+            <button
+              type="button"
+              className={`btn ${camera.recording ? 'btn-rec' : 'btn-primary'}`}
+              onClick={toggleRecording}
+            >
+              {camera.recording ? '⏹ Parar e baixar' : '⏺ Gravar'}
+            </button>
+          )}
+        </div>
 
         <div className="control-cluster">
           <button type="button" className="btn" onClick={handleRestart} aria-label="Reiniciar do topo">

@@ -45,6 +45,7 @@ const FONT_MAX = 110
 const FONT_STEP = 4
 const COUNTDOWN_SECONDS = 3
 const NUDGE_PIXELS = 140
+const TOAST_MS = 8000
 /** Espera no fim do texto antes de parar a gravação sozinha (respiro para o fechamento). */
 const AUTO_STOP_DELAY_MS = 2500
 
@@ -537,7 +538,8 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
       <IonToast
         isOpen={Boolean(nativeCam?.notice)}
         message={nativeCam?.notice ?? ''}
-        duration={8000}
+        // Com o botão do Drive, o aviso espera o toque; sem ele, some sozinho.
+        duration={driveButtons.length > 0 ? 0 : TOAST_MS}
         position="top"
         onDidDismiss={() => nativeCam?.dismissNotice()}
         buttons={[...driveButtons, { text: 'OK', role: 'cancel' }]}

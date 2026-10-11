@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { apiFetch } from '../lib/api'
 import type { ScriptRequest } from '../lib/types'
 
 export type GenerationPhase = 'idle' | 'connecting' | 'thinking' | 'streaming' | 'done' | 'error'
@@ -39,7 +40,7 @@ export function useGenerateScript() {
     setState({ phase: 'connecting', text: '', error: null })
 
     try {
-      const response = await fetch('/api/generate', {
+      const response = await apiFetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),

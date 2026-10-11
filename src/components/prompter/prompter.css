@@ -289,3 +289,59 @@
     animation: none;
   }
 }
+
+/* ---------- APK: câmera nativa desenhada pelo Android atrás da WebView ---------- */
+html.native-cam,
+html.native-cam body,
+html.native-cam #root {
+  background: transparent !important;
+}
+
+html.native-cam .app-shell {
+  visibility: hidden;
+}
+
+html.native-cam .prompter {
+  visibility: visible;
+  background: transparent;
+}
+
+html.native-cam .prompter::backdrop {
+  background: transparent;
+}
+
+.prompter-notice {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 7;
+  max-width: min(92vw, 40rem);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: oklch(14% 0.01 70 / 0.9);
+  border: 1px solid oklch(100% 0 0 / 0.15);
+  border-radius: 12px;
+  padding: 0.6rem 0.9rem;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+}
+
+.quality-select {
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: var(--color-surface-raised, oklch(20% 0.01 70));
+  border: 1px solid oklch(100% 0 0 / 0.15);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
+
+/* APK gravando: só Parar e Pausar ficam visíveis — o resto da tela é texto e câmera. */
+.is-rec-compact .prompter-controls > .btn-ghost,
+.is-rec-compact .control-cluster:not(.is-essential),
+.is-rec-compact .rec-hide,
+.is-rec-compact .prompter-controls kbd {
+  display: none;
+}

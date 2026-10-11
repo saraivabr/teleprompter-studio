@@ -4,3 +4,10 @@ dist
 .DS_Store
 *.local
 .remember
+
+# Android
+android/local.properties
+android/app/build
+android/build
+android/.gradle
+android/capacitor-cordova-android-plugins/build

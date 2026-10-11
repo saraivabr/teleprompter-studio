@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAutoScroll } from '../../hooks/useAutoScroll'
 import { useCamera } from '../../hooks/useCamera'
+import { useNativeCamera } from '../../hooks/useNativeCamera'
+import { isNativeApp, NativeCamera, type RemoteKey, type VideoQuality } from '../../lib/native-camera'
 import { parseScript, prompterLines } from '../../lib/script-parser'
 import { ScriptLine } from '../script/ScriptLine'
 import './prompter.css'
@@ -18,6 +20,13 @@ const FONT_MIN = 28
 const FONT_MAX = 110
 const FONT_STEP = 4
 const COUNTDOWN_SECONDS = 3
+const NUDGE_PIXELS = 140
+/** Espera no fim do texto antes de parar a gravação sozinha (respiro para o fechamento). */
+const AUTO_STOP_DELAY_MS = 2500
+
+// No APK a câmera é nativa (CameraX, MP4 na galeria); no navegador segue o MediaRecorder.
+const usePlatformCamera: () => ReturnType<typeof useCamera> | ReturnType<typeof useNativeCamera> =
+  isNativeApp ? useNativeCamera : useCamera
 
 interface PrompterViewProps {
   raw: string
@@ -52,7 +61,9 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
     contentRef,
     viewportRef,
   })
-  const camera = useCamera()
+  const camera = usePlatformCamera()
+  const nativeCam = 'native' in camera ? camera : null
+  const armedRecordingRef = useRef(false)
 
   const toggleCamera = () => {
     if (camera.status === 'on') camera.stop()
@@ -60,8 +71,20 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
   }
 
   const toggleRecording = () => {
-    if (camera.recording) camera.stopRecording()
-    else camera.startRecording()
+    if (camera.recording) {
+      setRunning(false)
+      void camera.stopRecording()
+      return
+    }
+    if (!nativeCam) {
+      void camera.startRecording()
+      return
+    }
+    // APK: contagem 3-2-1 e começa a gravar e a rolar juntos, do topo.
+    setRunning(false)
+    restart()
+    armedRecordingRef.current = true
+    setCountdown(COUNTDOWN_SECONDS)
   }
 
   // Abre como modal nativo: foco preso, Escape e restauração de foco grátis.
@@ -75,12 +98,24 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
     if (atEnd) setRunning(false)
   }, [atEnd])
 
+  // APK: chegou ao fim do roteiro gravando → para e salva sozinho.
+  useEffect(() => {
+    if (!nativeCam || !atEnd || !camera.recording) return
+    const timer = setTimeout(() => void camera.stopRecording(), AUTO_STOP_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [nativeCam, atEnd, camera])
+
+
   // Contagem 3-2-1 antes de iniciar (pulada com reduced-motion).
   useEffect(() => {
     if (countdown === null) return
     if (countdown <= 0) {
       setCountdown(null)
       setRunning(true)
+      if (armedRecordingRef.current) {
+        armedRecordingRef.current = false
+        void camera.startRecording()
+      }
       return
     }
     const timer = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 1000)
@@ -113,6 +148,24 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
     restart()
   }
 
+  // APK: controle Bluetooth / pedal / botões de volume comandam o teleprompter.
+  const remoteRef = useRef<(key: RemoteKey) => void>(() => {})
+  remoteRef.current = (key: RemoteKey) => {
+    if (key === 'volumeUp' || key === 'playPause') togglePlay()
+    else if (key === 'volumeDown') toggleRecording()
+    else if (key === 'pageDown' || key === 'next') nudge(NUDGE_PIXELS)
+    else if (key === 'pageUp' || key === 'previous') nudge(-NUDGE_PIXELS)
+  }
+  useEffect(() => {
+    if (!isNativeApp) return
+    void NativeCamera.setRemoteEnabled({ enabled: true })
+    const handle = NativeCamera.addListener('remoteKey', ({ key }) => remoteRef.current(key))
+    return () => {
+      void NativeCamera.setRemoteEnabled({ enabled: false })
+      void handle.then((h) => h.remove())
+    }
+  }, [])
+
   const close = () => dialogRef.current?.close()
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -132,11 +185,11 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
         break
       case 'ArrowRight':
         e.preventDefault()
-        nudge(140)
+        nudge(NUDGE_PIXELS)
         break
       case 'ArrowLeft':
         e.preventDefault()
-        nudge(-140)
+        nudge(-NUDGE_PIXELS)
         break
       case '+':
       case '=':
@@ -161,13 +214,14 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="prompter"
+      className={`prompter${nativeCam && camera.recording ? ' is-rec-compact' : ''}`}
       aria-label="Modo teleprompter"
       onClose={onClose}
       onKeyDown={onKeyDown}
     >
       {camera.status === 'on' && (
         <>
+          {!nativeCam && (
           <video
             ref={camera.attach}
             className="prompter-camera"
@@ -176,6 +230,7 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
             muted
             aria-hidden="true"
           />
+          )}
           <div className="prompter-scrim" aria-hidden="true" />
         </>
       )}
@@ -184,6 +239,12 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
         <div className="prompter-rec" aria-live="polite">
           <span className="rec-dot" aria-hidden="true" /> REC {formatTime(camera.seconds)}
         </div>
+      )}
+
+      {nativeCam?.notice && (
+        <button type="button" className="prompter-notice" onClick={nativeCam.dismissNotice}>
+          {nativeCam.notice} <span aria-hidden="true">✕</span>
+        </button>
       )}
 
       {camera.error && (
@@ -231,10 +292,10 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
           ✕ Sair <kbd>Esc</kbd>
         </button>
 
-        <div className="control-cluster">
+        <div className="control-cluster is-essential">
           <button
             type="button"
-            className={`btn${camera.status === 'on' ? ' btn-rec' : ''}`}
+            className={`btn rec-hide${camera.status === 'on' ? ' btn-rec' : ''}`}
             onClick={toggleCamera}
             aria-pressed={camera.status === 'on'}
             disabled={camera.status === 'requesting'}
@@ -247,13 +308,40 @@ export function PrompterView({ raw, onClose }: PrompterViewProps) {
               className={`btn ${camera.recording ? 'btn-rec' : 'btn-primary'}`}
               onClick={toggleRecording}
             >
-              {camera.recording ? '⏹ Parar e baixar' : '⏺ Gravar'}
+              {camera.recording ? (nativeCam ? '⏹ Parar e salvar' : '⏹ Parar e baixar') : '⏺ Gravar'}
             </button>
+          )}
+          {nativeCam && camera.status === 'on' && (
+            <>
+              <button
+                type="button"
+                className="btn btn-icon rec-hide"
+                onClick={() => void nativeCam.flip()}
+                disabled={camera.recording}
+                aria-label={nativeCam.facing === 'front' ? 'Usar câmera traseira' : 'Usar câmera frontal'}
+                title="Virar câmera"
+              >
+                🔄
+              </button>
+              <select
+                className="quality-select rec-hide"
+                value={nativeCam.quality}
+                disabled={camera.recording}
+                onChange={(e) => void nativeCam.setQuality(e.target.value as VideoQuality)}
+                aria-label="Qualidade do vídeo"
+              >
+                {nativeCam.qualities.map((q) => (
+                  <option key={q} value={q}>
+                    {nativeCam.qualityLabel[q]}
+                  </option>
+                ))}
+              </select>
+            </>
           )}
         </div>
 
-        <div className="control-cluster">
-          <button type="button" className="btn" onClick={handleRestart} aria-label="Reiniciar do topo">
+        <div className="control-cluster is-essential">
+          <button type="button" className="btn rec-hide" onClick={handleRestart} aria-label="Reiniciar do topo">
             ⟲
           </button>
           <button

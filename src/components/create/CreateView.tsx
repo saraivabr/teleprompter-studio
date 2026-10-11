@@ -1,6 +1,41 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  IonAccordion,
+  IonAccordionGroup,
+  IonBadge,
+  IonButton,
+  IonButtons,
+  IonChip,
+  IonContent,
+  IonFooter,
+  IonHeader,
+  IonIcon,
+  IonItem,
+  IonLabel,
+  IonList,
+  IonListHeader,
+  IonNote,
+  IonSegment,
+  IonSegmentButton,
+  IonSelect,
+  IonSelectOption,
+  IonSpinner,
+  IonTextarea,
+  IonToast,
+  IonToolbar,
+} from '@ionic/react'
+import {
+  bookmarkOutline,
+  copyOutline,
+  flameOutline,
+  refreshOutline,
+  sparkles,
+  stop,
+  videocam,
+} from 'ionicons/icons'
 import { useGenerateScript } from '../../hooks/useGenerateScript'
 import { useTrends, type TrendTopic } from '../../hooks/useTrends'
+import { haptic } from '../../lib/device'
 import { saveScript } from '../../lib/storage'
 import {
   CONTEXT_PRESETS,
@@ -19,6 +54,8 @@ import './create.css'
 const IDEA_MAX = 12_000
 const MORAL_MAX = 2_000
 const NOTES_MAX = 4_000
+const TOAST_MS = 1800
+const NO_CONTEXT = 'none'
 
 const PHASE_ANNOUNCEMENT: Record<string, string> = {
   connecting: 'Conectando…',
@@ -40,12 +77,24 @@ export function CreateView({ onOpenPrompter }: CreateViewProps) {
   const [cover, setCover] = useState<Cover>('Automática')
   const [context, setContext] = useState<ContextId | null>(null)
   const [extraNotes, setExtraNotes] = useState('')
-  const [copied, setCopied] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   const { phase, text, error, generate, cancel } = useGenerateScript()
   const { status: trendsStatus, trends, error: trendsError, load: loadTrends } = useTrends()
   const busy = phase === 'connecting' || phase === 'thinking' || phase === 'streaming'
+  const contentRef = useRef<HTMLIonContentElement>(null)
+  const resultRef = useRef<HTMLElement>(null)
+  const advancedCount = [context, moral.trim(), cover !== 'Automática' ? cover : '', extraNotes.trim()].filter(
+    Boolean,
+  ).length
+
+  // O resultado fica abaixo do formulário: rola até ele quando a geração começa.
+  useEffect(() => {
+    if (phase === 'connecting' && resultRef.current) {
+      void contentRef.current?.scrollToPoint(0, resultRef.current.offsetTop - 8, 400)
+    }
+    if (phase === 'done') haptic('medium')
+  }, [phase])
 
   const applyTrend = (trend: TrendTopic) => {
     const seed = trend.news[0] ? `${trend.title} — ${trend.news[0]}` : trend.title
@@ -53,6 +102,7 @@ export function CreateView({ onOpenPrompter }: CreateViewProps) {
       prev.trim() ? `${prev.trim()}\n\nGancho com tema em alta: ${seed}` : `Tema em alta: ${seed}`,
     )
     setCover('Tema do momento')
+    haptic('light')
   }
 
   const currentRequest = (): ScriptRequest => ({
@@ -67,261 +117,266 @@ export function CreateView({ onOpenPrompter }: CreateViewProps) {
 
   const handleGenerate = () => {
     if (!idea.trim() || busy) return
-    setCopied(false)
-    setSaved(false)
+    haptic('light')
     void generate(currentRequest())
   }
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setToast('Texto copiado')
     } catch {
-      // Clipboard indisponível (ex.: contexto não seguro) — sem ação.
+      setToast('Não foi possível copiar neste aparelho')
     }
   }
 
   const handleSave = () => {
     saveScript({ request: currentRequest(), raw: text })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    haptic('light')
+    setToast('Salvo na biblioteca')
   }
 
-  return (
-    <div className="create-view">
-      <section className="create-form" aria-label="Configuração do roteiro">
-        <div className="field">
-          <label htmlFor="idea">Ideia, tema ou texto bruto</label>
-          <textarea
-            id="idea"
-            value={idea}
-            maxLength={IDEA_MAX}
-            onChange={(e) => setIdea(e.target.value)}
-            placeholder="Ex.: IA que liga para o cliente dentro do WhatsApp durante o onboarding…"
-            rows={7}
-          />
-        </div>
+  const done = phase === 'done' && Boolean(text)
 
-        <div className="field">
-          <div className="trends-head">
-            <span className="field-label-text">Temas em alta agora</span>
-            <button
-              type="button"
-              className="btn btn-ghost trends-load"
+  return (
+    <>
+      <IonHeader className="ion-no-border">
+        <IonToolbar>
+          <div className="brand" slot="start">
+            <span className="brand-rec" aria-hidden="true" />
+            <h1>
+              Roteiro <em>Studio</em>
+            </h1>
+          </div>
+        </IonToolbar>
+      </IonHeader>
+
+      <IonContent ref={contentRef}>
+        <div className="page-body create-view">
+          <IonList inset className="card-list">
+            <IonItem lines="none">
+              <IonTextarea
+                label="Sobre o que é o vídeo?"
+                labelPlacement="stacked"
+                value={idea}
+                maxlength={IDEA_MAX}
+                autoGrow
+                rows={4}
+                onIonInput={(e) => setIdea(e.detail.value ?? '')}
+                placeholder="Ideia, tema ou texto bruto. Ex.: IA que liga para o cliente dentro do WhatsApp…"
+              />
+            </IonItem>
+          </IonList>
+
+          <div className="section-head">
+            <IonNote>Sem ideia? Puxe um assunto em alta no Google.</IonNote>
+            <IonButton
+              size="small"
+              fill="outline"
               onClick={() => void loadTrends()}
               disabled={trendsStatus === 'loading'}
             >
-              {trendsStatus === 'loading'
-                ? 'Buscando…'
-                : trendsStatus === 'done'
-                  ? '↻ Atualizar'
-                  : '🔥 Ver temas em alta'}
-            </button>
+              {trendsStatus === 'loading' ? (
+                <IonSpinner name="dots" />
+              ) : (
+                <IonIcon slot="start" icon={trendsStatus === 'done' ? refreshOutline : flameOutline} />
+              )}
+              {trendsStatus === 'done' ? 'Atualizar' : 'Em alta'}
+            </IonButton>
           </div>
 
           {trendsStatus === 'error' && (
-            <p className="field-hint trends-error" role="alert">
+            <IonNote color="danger" className="section-note" role="alert">
               {trendsError}
-            </p>
+            </IonNote>
           )}
 
           {trendsStatus === 'done' && trends.length > 0 && (
-            <div className="trend-chips">
+            <div className="chip-scroll">
               {trends.map((trend, i) => (
-                <button
-                  key={`${trend.title}-${i}`}
-                  type="button"
-                  className="trend-chip"
-                  onClick={() => applyTrend(trend)}
-                  title={trend.news[0] ?? 'Usar como tema do momento'}
-                >
-                  <span className="trend-chip-title">{trend.title}</span>
-                  {trend.traffic && <span className="trend-chip-traffic">{trend.traffic}</span>}
-                </button>
+                <IonChip key={`${trend.title}-${i}`} outline onClick={() => applyTrend(trend)}>
+                  <IonLabel>{trend.title}</IonLabel>
+                  {trend.traffic && <IonBadge color="primary">{trend.traffic}</IonBadge>}
+                </IonChip>
               ))}
             </div>
           )}
 
-          <p className="field-hint">
-            Tendências de busca no Google (Brasil). Clique em uma para usar como “Tema do momento”.
-          </p>
-        </div>
-
-        <fieldset className="field">
-          <legend>Contexto pronto</legend>
-          <div className="chip-group" role="radiogroup" aria-label="Contexto pronto">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={context === null}
-              className={`chip${context === null ? ' is-active' : ''}`}
-              onClick={() => setContext(null)}
-            >
-              Nenhum
-            </button>
-            {CONTEXT_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                role="radio"
-                aria-checked={context === preset.id}
-                className={`chip${context === preset.id ? ' is-active' : ''}`}
-                onClick={() => setContext(preset.id)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <p className="field-hint">
-            Anexa os fatos do assunto ao pedido — escreva só a ideia, sem precisar explicar tudo.
-          </p>
-        </fieldset>
-
-        <fieldset className="field">
-          <legend>Plataforma</legend>
-          <div className="chip-group" role="radiogroup" aria-label="Plataforma">
+          <IonListHeader>
+            <IonLabel>Plataforma</IonLabel>
+          </IonListHeader>
+          <IonSegment
+            scrollable
+            value={platform}
+            onIonChange={(e) => setPlatform(e.detail.value as Platform)}
+            aria-label="Plataforma"
+          >
             {PLATFORMS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                role="radio"
-                aria-checked={platform === p}
-                className={`chip${platform === p ? ' is-active' : ''}`}
-                onClick={() => setPlatform(p)}
-              >
-                {p}
-              </button>
+              <IonSegmentButton key={p} value={p}>
+                <IonLabel>{p}</IonLabel>
+              </IonSegmentButton>
             ))}
-          </div>
-        </fieldset>
+          </IonSegment>
 
-        <fieldset className="field">
-          <legend>Duração</legend>
-          <div className="chip-group" role="radiogroup" aria-label="Duração">
+          <IonListHeader>
+            <IonLabel>Duração</IonLabel>
+          </IonListHeader>
+          <IonSegment
+            scrollable
+            value={duration}
+            onIonChange={(e) => setDuration(e.detail.value as Duration)}
+            aria-label="Duração"
+          >
             {DURATIONS.map((d) => (
-              <button
-                key={d}
-                type="button"
-                role="radio"
-                aria-checked={duration === d}
-                className={`chip${duration === d ? ' is-active' : ''}`}
-                onClick={() => setDuration(d)}
-              >
-                {d}
-              </button>
+              <IonSegmentButton key={d} value={d}>
+                <IonLabel>{d}</IonLabel>
+              </IonSegmentButton>
             ))}
-          </div>
-        </fieldset>
+          </IonSegment>
 
-        <div className="field">
-          <label htmlFor="moral">Moral da história (opcional)</label>
-          <textarea
-            id="moral"
-            value={moral}
-            maxLength={MORAL_MAX}
-            onChange={(e) => setMoral(e.target.value)}
-            placeholder="Para onde apontar a atenção: o que você quer vender, ensinar ou fazer o público acreditar…"
-            rows={2}
-          />
-        </div>
+          <IonAccordionGroup className="advanced">
+            <IonAccordion value="advanced">
+              <IonItem slot="header" lines="none">
+                <IonLabel>
+                  <h2>Ajustes avançados</h2>
+                  <p>Contexto, capa, moral da história e observações</p>
+                </IonLabel>
+                {advancedCount > 0 && <IonBadge slot="end">{advancedCount}</IonBadge>}
+              </IonItem>
+              <IonList slot="content" className="card-list">
+                <IonItem>
+                  <IonSelect
+                    label="Contexto pronto"
+                    labelPlacement="stacked"
+                    interface="action-sheet"
+                    value={context ?? NO_CONTEXT}
+                    onIonChange={(e) =>
+                      setContext(e.detail.value === NO_CONTEXT ? null : (e.detail.value as ContextId))
+                    }
+                  >
+                    <IonSelectOption value={NO_CONTEXT}>Nenhum</IonSelectOption>
+                    {CONTEXT_PRESETS.map((preset) => (
+                      <IonSelectOption key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </IonSelectOption>
+                    ))}
+                  </IonSelect>
+                </IonItem>
+                <IonItem>
+                  <IonSelect
+                    label="Capa do tema"
+                    labelPlacement="stacked"
+                    interface="action-sheet"
+                    value={cover}
+                    onIonChange={(e) => setCover(e.detail.value as Cover)}
+                  >
+                    {COVERS.map((c) => (
+                      <IonSelectOption key={c} value={c}>
+                        {c}
+                      </IonSelectOption>
+                    ))}
+                  </IonSelect>
+                </IonItem>
+                <IonItem>
+                  <IonTextarea
+                    label="Moral da história"
+                    labelPlacement="stacked"
+                    value={moral}
+                    maxlength={MORAL_MAX}
+                    autoGrow
+                    rows={2}
+                    onIonInput={(e) => setMoral(e.detail.value ?? '')}
+                    placeholder="O que você quer vender, ensinar ou fazer o público acreditar…"
+                  />
+                </IonItem>
+                <IonItem lines="none">
+                  <IonTextarea
+                    label="Observações"
+                    labelPlacement="stacked"
+                    value={extraNotes}
+                    maxlength={NOTES_MAX}
+                    autoGrow
+                    rows={2}
+                    onIonInput={(e) => setExtraNotes(e.detail.value ?? '')}
+                    placeholder="Ex.: cite o nome do produto, evite jargão X, tom mais provocativo…"
+                  />
+                </IonItem>
+              </IonList>
+            </IonAccordion>
+          </IonAccordionGroup>
 
-        <fieldset className="field">
-          <legend>Capa do tema</legend>
-          <div className="chip-group" role="radiogroup" aria-label="Capa do tema">
-            {COVERS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                role="radio"
-                aria-checked={cover === c}
-                className={`chip${cover === c ? ' is-active' : ''}`}
-                onClick={() => setCover(c)}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-          <p className="field-hint">
-            A “capa” é o tema interessante que chama atenção antes de você entrar no assunto.
-          </p>
-        </fieldset>
-
-        <div className="field">
-          <label htmlFor="notes">Observações (opcional)</label>
-          <textarea
-            id="notes"
-            value={extraNotes}
-            maxLength={NOTES_MAX}
-            onChange={(e) => setExtraNotes(e.target.value)}
-            placeholder="Ex.: cite o nome do produto, evite jargão X, tom mais provocativo…"
-            rows={2}
-          />
-        </div>
-
-        <div className="form-actions">
-          {busy ? (
-            <button type="button" className="btn btn-rec" onClick={cancel}>
-              ■ Parar geração
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleGenerate}
-              disabled={!idea.trim()}
-            >
-              ● Gerar roteiro
-            </button>
-          )}
-        </div>
-      </section>
-
-      <section className="create-result" aria-label="Roteiro gerado">
-        <p className="sr-only" role="status">
-          {PHASE_ANNOUNCEMENT[phase] ?? ''}
-        </p>
-
-        {phase === 'idle' && (
-          <div className="result-empty">
-            <p className="empty-glyph" aria-hidden="true">𝄞</p>
-            <p>Descreva a ideia ao lado e gere um roteiro pronto para gravar.</p>
-            <p className="empty-hint">
-              O roteiro sai com pausas <span className="mark-pause pause-1">·</span>, tons{' '}
-              <span className="mark-tone tone-up">↑</span> e ênfases já marcadas para teleprompter.
+          <section ref={resultRef} className="create-result" aria-label="Roteiro gerado">
+            <p className="sr-only" role="status">
+              {PHASE_ANNOUNCEMENT[phase] ?? ''}
             </p>
-          </div>
-        )}
 
-        {(phase === 'connecting' || phase === 'thinking') && (
-          <div className="result-empty">
-            <p className="pulse-dot" aria-hidden="true" />
-            <p>{phase === 'thinking' ? 'Estruturando o roteiro…' : 'Conectando…'}</p>
-          </div>
-        )}
+            {phase === 'idle' && (
+              <div className="result-empty">
+                <p className="empty-glyph" aria-hidden="true">𝄞</p>
+                <p>O roteiro aparece aqui, pronto para gravar.</p>
+                <p className="empty-hint">
+                  Com pausas <span className="mark-pause pause-1">·</span>, tons{' '}
+                  <span className="mark-tone tone-up">↑</span> e ênfases já marcadas.
+                </p>
+              </div>
+            )}
 
-        {text && <ScriptView raw={text} streaming={phase === 'streaming'} />}
+            {(phase === 'connecting' || phase === 'thinking') && (
+              <div className="result-empty">
+                <IonSpinner name="crescent" color="primary" />
+                <p>{phase === 'thinking' ? 'Estruturando o roteiro…' : 'Conectando…'}</p>
+              </div>
+            )}
 
-        {error && (
-          <p className="result-error" role="alert">
-            {error}
-          </p>
-        )}
+            {text && <ScriptView raw={text} streaming={phase === 'streaming'} />}
 
-        {phase === 'done' && text && (
-          <div className="result-actions">
-            <button type="button" className="btn btn-primary" onClick={() => onOpenPrompter(text)}>
-              ▶ Abrir no teleprompter
-            </button>
-            <button type="button" className="btn" onClick={() => void handleCopy()}>
-              {copied ? '✓ Copiado' : 'Copiar texto'}
-            </button>
-            <button type="button" className="btn" onClick={handleSave}>
-              {saved ? '✓ Salvo' : 'Salvar na biblioteca'}
-            </button>
-          </div>
-        )}
-      </section>
-    </div>
+            {error && (
+              <p className="result-error" role="alert">
+                {error}
+              </p>
+            )}
+          </section>
+        </div>
+      </IonContent>
+
+      <IonFooter className="ion-no-border action-footer">
+        <IonToolbar>
+          {done ? (
+            <div className="footer-row">
+              <IonButton expand="block" className="footer-primary" onClick={() => onOpenPrompter(text)}>
+                <IonIcon slot="start" icon={videocam} />
+                Gravar com teleprompter
+              </IonButton>
+              <IonButtons>
+                <IonButton onClick={() => void handleCopy()} aria-label="Copiar texto">
+                  <IonIcon slot="icon-only" icon={copyOutline} />
+                </IonButton>
+                <IonButton onClick={handleSave} aria-label="Salvar na biblioteca">
+                  <IonIcon slot="icon-only" icon={bookmarkOutline} />
+                </IonButton>
+              </IonButtons>
+            </div>
+          ) : busy ? (
+            <IonButton expand="block" color="danger" fill="outline" onClick={cancel}>
+              <IonIcon slot="start" icon={stop} />
+              Parar geração
+            </IonButton>
+          ) : (
+            <IonButton expand="block" onClick={handleGenerate} disabled={!idea.trim()}>
+              <IonIcon slot="start" icon={sparkles} />
+              Gerar roteiro
+            </IonButton>
+          )}
+        </IonToolbar>
+      </IonFooter>
+
+      <IonToast
+        isOpen={toast !== null}
+        message={toast ?? ''}
+        duration={TOAST_MS}
+        position="bottom"
+        onDidDismiss={() => setToast(null)}
+      />
+    </>
   )
 }

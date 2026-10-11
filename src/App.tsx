@@ -1,52 +1,57 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { IonApp, IonIcon, IonLabel, IonTab, IonTabBar, IonTabButton, IonTabs } from '@ionic/react'
+import { bookmarks, bookmarksOutline, sparkles, sparklesOutline } from 'ionicons/icons'
 import { CreateView } from './components/create/CreateView'
 import { LibraryView } from './components/library/LibraryView'
 import { PrompterView } from './components/prompter/PrompterView'
+import { haptic, setupSystemBars } from './lib/device'
 import './app.css'
 
-type View = 'create' | 'library'
+type Tab = 'create' | 'library'
 
 export default function App() {
-  const [view, setView] = useState<View>('create')
+  const [tab, setTab] = useState<Tab>('create')
   const [prompterScript, setPrompterScript] = useState<string | null>(null)
+  // Recarrega a biblioteca quando o usuário volta para ela (ex.: salvou um roteiro novo).
+  const [libraryVersion, setLibraryVersion] = useState(0)
+
+  useEffect(setupSystemBars, [])
+
+  const onTabChange = (next: Tab) => {
+    haptic('light')
+    setTab(next)
+    if (next === 'library') setLibraryVersion((v) => v + 1)
+  }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="brand">
-          <span className="brand-rec" aria-hidden="true" />
-          <h1>
-            Roteiro <em>Studio</em>
-          </h1>
-        </div>
-        <nav aria-label="Navegação principal">
-          <button
-            type="button"
-            className={`nav-tab${view === 'create' ? ' is-active' : ''}`}
-            aria-current={view === 'create' ? 'page' : undefined}
-            onClick={() => setView('create')}
-          >
-            Criar
-          </button>
-          <button
-            type="button"
-            className={`nav-tab${view === 'library' ? ' is-active' : ''}`}
-            aria-current={view === 'library' ? 'page' : undefined}
-            onClick={() => setView('library')}
-          >
-            Biblioteca
-          </button>
-        </nav>
-      </header>
+    <IonApp className="app-shell">
+      <IonTabs onIonTabsDidChange={(e) => onTabChange(e.detail.tab as Tab)}>
+        <IonTab tab="create">
+          <div className="ion-page">
+            <CreateView onOpenPrompter={setPrompterScript} />
+          </div>
+        </IonTab>
+        <IonTab tab="library">
+          <div className="ion-page">
+            <LibraryView key={libraryVersion} onOpenPrompter={setPrompterScript} />
+          </div>
+        </IonTab>
 
-      <main className="app-main">
-        {view === 'create' && <CreateView onOpenPrompter={setPrompterScript} />}
-        {view === 'library' && <LibraryView onOpenPrompter={setPrompterScript} />}
-      </main>
+        <IonTabBar slot="bottom">
+          <IonTabButton tab="create">
+            <IonIcon icon={tab === 'create' ? sparkles : sparklesOutline} />
+            <IonLabel>Criar</IonLabel>
+          </IonTabButton>
+          <IonTabButton tab="library">
+            <IonIcon icon={tab === 'library' ? bookmarks : bookmarksOutline} />
+            <IonLabel>Biblioteca</IonLabel>
+          </IonTabButton>
+        </IonTabBar>
+      </IonTabs>
 
       {prompterScript !== null && (
         <PrompterView raw={prompterScript} onClose={() => setPrompterScript(null)} />
       )}
-    </div>
+    </IonApp>
   )
 }

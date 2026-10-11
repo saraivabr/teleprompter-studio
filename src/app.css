@@ -1,29 +1,16 @@
-.app-shell {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: var(--space-5) var(--space-5) var(--space-7);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
+/* Marca no topo das telas */
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
+  padding-inline: 12px 4px;
 }
 
 .brand h1 {
-  font-size: var(--text-xl);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
   font-weight: 700;
+  margin: 0;
 }
 
 .brand h1 em {
@@ -32,42 +19,65 @@
 }
 
 .brand-rec {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--color-rec);
-  box-shadow: 0 0 14px oklch(62% 0.23 27 / 0.8);
+  box-shadow: 0 0 12px oklch(62% 0.23 27 / 0.8);
   animation: pulse-rec 2.2s ease-in-out infinite;
 }
 
-.app-header nav {
-  display: flex;
-  gap: var(--space-1);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  padding: var(--space-1);
+/* Conteúdo centralizado e confortável também no desktop */
+.page-body {
+  max-width: 760px;
+  margin: 0 auto;
 }
 
-.nav-tab {
-  padding: 0.45rem 1.2rem;
-  border-radius: 999px;
-  font-size: var(--text-sm);
-  font-weight: 600;
+/* Listas "inset" com cara de card do Material 3 */
+.card-list {
+  border-radius: 20px;
+}
+
+ion-list.card-list ion-item {
+  --background: var(--ion-item-background);
+}
+
+/* ---- Rodapé com a ação principal (acima das abas) ---- */
+
+.action-footer ion-toolbar {
+  --background: oklch(16% 0.012 70 / 0.92);
+  --padding-start: var(--space-4);
+  --padding-end: var(--space-4);
+  --padding-top: var(--space-2);
+  --padding-bottom: var(--space-2);
+  backdrop-filter: blur(16px);
+}
+
+.action-footer ion-button[expand='block'] {
+  height: 52px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.footer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.footer-primary {
+  flex: 1;
+}
+
+.page-body > ion-list.card-list:first-child {
+  margin-top: var(--space-3);
+}
+
+ion-list-header {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-text-dim);
-  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
-}
-
-.nav-tab:hover {
-  color: var(--color-text);
-}
-
-.nav-tab.is-active {
-  background: var(--color-amber-soft);
-  color: var(--color-amber);
-}
-
-.app-main {
-  display: flex;
-  flex-direction: column;
+  min-height: 40px;
+  margin-top: var(--space-3);
 }

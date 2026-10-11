@@ -2,7 +2,12 @@ package ai.saraiva.roteiros;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
+import android.content.Intent;
+import android.hardware.camera2.CaptureRequest;
+import android.net.Uri;
+import android.util.Range;
 import android.graphics.Color;
 import android.os.Build;
 import android.provider.MediaStore;
@@ -10,7 +15,11 @@ import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import androidx.annotation.OptIn;
+import androidx.camera.camera2.interop.Camera2Interop;
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
 import androidx.camera.core.Camera;
+import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.DynamicRange;
 import androidx.camera.core.Preview;
@@ -60,6 +69,12 @@ public class NativeCameraPlugin extends Plugin {
 
     private static final String ALBUM = "Movies/Roteiro Studio";
 
+    /**
+     * A Samsung só declara até 1080p no CamcorderProfile da frontal, embora o
+     * sensor entregue 4K. Derivar as qualidades do codec libera o 4K.
+     */
+    private static final int CAPS_SOURCE = Recorder.VIDEO_CAPABILITIES_SOURCE_CODEC_CAPABILITIES;
+
     private PreviewView previewView;
     private ProcessCameraProvider provider;
     private Preview preview;
@@ -69,7 +84,9 @@ public class NativeCameraPlugin extends Plugin {
     private PluginCall pendingStop;
 
     private int lensFacing = CameraSelector.LENS_FACING_FRONT;
-    private String quality = "FHD";
+    private String quality = "UHD";
+    private boolean hdr = false;
+    private boolean hdrSupported = false;
     private boolean remoteEnabled = false;
 
     @Override
@@ -93,6 +110,7 @@ public class NativeCameraPlugin extends Plugin {
     public void start(PluginCall call) {
         lensFacing = "back".equals(call.getString("facing")) ? CameraSelector.LENS_FACING_BACK : CameraSelector.LENS_FACING_FRONT;
         quality = call.getString("quality", quality);
+        hdr = Boolean.TRUE.equals(call.getBoolean("hdr", hdr));
         if (getPermissionState("camera") != PermissionState.GRANTED || getPermissionState("microphone") != PermissionState.GRANTED) {
             requestAllPermissions(call, "permissionsCallback");
             return;
@@ -149,18 +167,63 @@ public class NativeCameraPlugin extends Plugin {
         }
     }
 
+    /** Bitrate alvo por qualidade — perto do que o app da Samsung usa. */
+    private int bitrateFor(String q) {
+        switch (q) {
+            case "UHD": return 50_000_000;
+            case "HD": return 12_000_000;
+            case "SD": return 6_000_000;
+            default: return 24_000_000;
+        }
+    }
+
+    /**
+     * Ajustes de imagem via Camera2: exposição priorizando o rosto, redução de
+     * ruído e nitidez em alta qualidade e 30 fps travados (movimento estável).
+     */
+    @OptIn(markerClass = ExperimentalCamera2Interop.class)
+    private void tune(Camera2Interop.Extender<?> extender) {
+        extender.setCaptureRequestOption(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_USE_SCENE_MODE);
+        extender.setCaptureRequestOption(CaptureRequest.CONTROL_SCENE_MODE, CaptureRequest.CONTROL_SCENE_MODE_FACE_PRIORITY);
+        extender.setCaptureRequestOption(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
+        extender.setCaptureRequestOption(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
+        extender.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(30, 30));
+        extender.setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO);
+    }
+
+    private boolean supportsHdr(CameraInfo info) {
+        return Recorder.getVideoCapabilities(info, CAPS_SOURCE).getSupportedDynamicRanges().contains(DynamicRange.HLG_10_BIT);
+    }
+
     private void bind() {
         if (provider == null) return;
         provider.unbindAll();
-        preview = new Preview.Builder().build();
+        CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(lensFacing).build();
+        List<CameraInfo> matches = cameraSelector.filter(provider.getAvailableCameraInfos());
+        CameraInfo info = matches.isEmpty() ? null : matches.get(0);
+        hdrSupported = info != null && supportsHdr(info);
+        boolean useHdr = hdr && hdrSupported;
+
+        Preview.Builder previewBuilder = new Preview.Builder();
+        tune(new Camera2Interop.Extender<>(previewBuilder));
+        if (useHdr) previewBuilder.setDynamicRange(DynamicRange.HLG_10_BIT);
+        preview = previewBuilder.build();
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
         QualitySelector selector = QualitySelector.from(toQuality(quality), FallbackStrategy.lowerQualityOrHigherThan(Quality.SD));
-        Recorder recorder = new Recorder.Builder().setQualitySelector(selector).build();
-        videoCapture = VideoCapture.withOutput(recorder);
+        Recorder recorder = new Recorder.Builder()
+            .setQualitySelector(selector)
+            .setTargetVideoEncodingBitRate(bitrateFor(quality))
+            .setVideoCapabilitiesSource(CAPS_SOURCE)
+            .build();
+        VideoCapture.Builder<Recorder> videoBuilder = new VideoCapture.Builder<>(recorder);
+        tune(new Camera2Interop.Extender<>(videoBuilder));
+        if (useHdr) videoBuilder.setDynamicRange(DynamicRange.HLG_10_BIT);
+        videoCapture = videoBuilder.build();
+
         int rotation = displayRotation();
         preview.setTargetRotation(rotation);
         videoCapture.setTargetRotation(rotation);
-        CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(lensFacing).build();
         camera = provider.bindToLifecycle((LifecycleOwner) getActivity(), cameraSelector, preview, videoCapture);
     }
 
@@ -170,13 +233,15 @@ public class NativeCameraPlugin extends Plugin {
         ret.put("quality", quality);
         JSArray qualities = new JSArray();
         if (camera != null) {
-            List<Quality> supported = Recorder.getVideoCapabilities(camera.getCameraInfo()).getSupportedQualities(DynamicRange.SDR);
+            List<Quality> supported = Recorder.getVideoCapabilities(camera.getCameraInfo(), CAPS_SOURCE).getSupportedQualities(DynamicRange.SDR);
             if (supported.contains(Quality.UHD)) qualities.put("UHD");
             if (supported.contains(Quality.FHD)) qualities.put("FHD");
             if (supported.contains(Quality.HD)) qualities.put("HD");
             if (supported.contains(Quality.SD)) qualities.put("SD");
         }
         ret.put("qualities", qualities);
+        ret.put("hdr", hdr && hdrSupported);
+        ret.put("hdrSupported", hdrSupported);
         ret.put("hasMicrophone", getPermissionState("microphone") == PermissionState.GRANTED);
         return ret;
     }
@@ -190,6 +255,7 @@ public class NativeCameraPlugin extends Plugin {
         String facing = call.getString("facing");
         if (facing != null) lensFacing = "back".equals(facing) ? CameraSelector.LENS_FACING_BACK : CameraSelector.LENS_FACING_FRONT;
         quality = call.getString("quality", quality);
+        hdr = Boolean.TRUE.equals(call.getBoolean("hdr", hdr));
         getActivity().runOnUiThread(() -> {
             try {
                 bind();
@@ -288,6 +354,31 @@ public class NativeCameraPlugin extends Plugin {
         pendingStop = call;
         recording.stop();
         recording = null;
+    }
+
+    // ---------- Google Drive ----------
+
+    private static final String DRIVE_PACKAGE = "com.google.android.apps.docs";
+
+    /** Abre o "Enviar para o Drive" com o vídeo; sem o app do Drive, cai no menu de compartilhar. */
+    @PluginMethod
+    public void sendToDrive(PluginCall call) {
+        String uri = call.getString("uri");
+        if (uri == null || uri.isEmpty()) {
+            call.reject("Nenhum vídeo para enviar.");
+            return;
+        }
+        Intent send = new Intent(Intent.ACTION_SEND)
+            .setType("video/mp4")
+            .putExtra(Intent.EXTRA_STREAM, Uri.parse(uri))
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            getActivity().startActivity(new Intent(send).setPackage(DRIVE_PACKAGE));
+            call.resolve();
+        } catch (ActivityNotFoundException e) {
+            getActivity().startActivity(Intent.createChooser(send, "Enviar vídeo"));
+            call.resolve();
+        }
     }
 
     // ---------- controle remoto ----------

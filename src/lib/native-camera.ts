@@ -15,6 +15,8 @@ export interface CameraState {
   facing: Facing
   quality: VideoQuality
   qualities: VideoQuality[]
+  hdr: boolean
+  hdrSupported: boolean
   hasMicrophone: boolean
 }
 
@@ -28,8 +30,9 @@ export interface RecordingResult {
 }
 
 interface NativeCameraPlugin {
-  start(options: { facing: Facing; quality: VideoQuality }): Promise<CameraState>
-  configure(options: { facing?: Facing; quality?: VideoQuality }): Promise<CameraState>
+  start(options: { facing: Facing; quality: VideoQuality; hdr: boolean }): Promise<CameraState>
+  configure(options: { facing?: Facing; quality?: VideoQuality; hdr?: boolean }): Promise<CameraState>
+  sendToDrive(options: { uri: string }): Promise<void>
   stop(): Promise<void>
   startRecording(): Promise<{ name: string }>
   stopRecording(): Promise<RecordingResult>

@@ -14,14 +14,18 @@ const NATIVE_CAM_CLASS = 'native-cam'
 interface CameraPrefs {
   facing: Facing
   quality: VideoQuality
+  hdr: boolean
+  autoDrive: boolean
 }
+
+const DEFAULT_PREFS: CameraPrefs = { facing: 'front', quality: 'UHD', hdr: false, autoDrive: false }
 
 function loadPrefs(): CameraPrefs {
   try {
     const parsed = JSON.parse(localStorage.getItem(PREFS_KEY) ?? '') as Partial<CameraPrefs>
-    return { facing: parsed.facing ?? 'front', quality: parsed.quality ?? 'FHD' }
+    return { ...DEFAULT_PREFS, ...parsed }
   } catch {
-    return { facing: 'front', quality: 'FHD' }
+    return DEFAULT_PREFS
   }
 }
 
@@ -56,6 +60,8 @@ export function useNativeCamera() {
   const [seconds, setSeconds] = useState(0)
   const [prefs, setPrefs] = useState<CameraPrefs>(loadPrefs)
   const [qualities, setQualities] = useState<VideoQuality[]>([])
+  const [hdrSupported, setHdrSupported] = useState(false)
+  const [lastVideo, setLastVideo] = useState<{ uri: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const timerRef = useRef<number | null>(null)
 
@@ -78,7 +84,8 @@ export function useNativeCamera() {
       const state = await NativeCamera.start(prefs)
       document.documentElement.classList.add(NATIVE_CAM_CLASS)
       setQualities(state.qualities)
-      updatePrefs({ facing: state.facing, quality: state.quality })
+      setHdrSupported(state.hdrSupported)
+      updatePrefs({ ...prefs, facing: state.facing, quality: state.quality, hdr: state.hdr })
       if (!state.hasMicrophone) setNotice('Microfone sem permissão: o vídeo vai sair sem som.')
       setStatus('on')
     } catch (e) {
@@ -101,12 +108,13 @@ export function useNativeCamera() {
       try {
         const state = await NativeCamera.configure(next)
         setQualities(state.qualities)
-        updatePrefs({ facing: state.facing, quality: state.quality })
+        setHdrSupported(state.hdrSupported)
+        updatePrefs({ ...prefs, facing: state.facing, quality: state.quality, hdr: state.hdr })
       } catch (e) {
         setNotice(errorMessage(e, 'Não foi possível trocar a câmera.'))
       }
     },
-    [updatePrefs],
+    [prefs, updatePrefs],
   )
 
   const flip = useCallback(
@@ -115,6 +123,25 @@ export function useNativeCamera() {
   )
 
   const setQuality = useCallback((quality: VideoQuality) => configure({ quality }), [configure])
+
+  const toggleHdr = useCallback(() => configure({ hdr: !prefs.hdr }), [configure, prefs.hdr])
+
+  const setAutoDrive = useCallback(
+    (autoDrive: boolean) => updatePrefs({ ...prefs, autoDrive }),
+    [prefs, updatePrefs],
+  )
+
+  const sendVideoToDrive = useCallback(async (uri: string) => {
+    try {
+      await NativeCamera.sendToDrive({ uri })
+    } catch (e) {
+      setNotice(errorMessage(e, 'Não foi possível abrir o Google Drive.'))
+    }
+  }, [])
+
+  const sendToDrive = useCallback(async () => {
+    if (lastVideo) await sendVideoToDrive(lastVideo.uri)
+  }, [lastVideo, sendVideoToDrive])
 
   const startRecording = useCallback(async () => {
     try {
@@ -132,11 +159,15 @@ export function useNativeCamera() {
     stopTimer()
     setRecording(false)
     try {
-      setNotice(savedMessage(await NativeCamera.stopRecording()))
+      const result = await NativeCamera.stopRecording()
+      setNotice(savedMessage(result))
+      if (!result.saved) return
+      setLastVideo({ uri: result.uri })
+      if (prefs.autoDrive) await sendVideoToDrive(result.uri)
     } catch (e) {
       setNotice(errorMessage(e, 'Não foi possível finalizar a gravação.'))
     }
-  }, [stopTimer])
+  }, [stopTimer, prefs.autoDrive, sendVideoToDrive])
 
   // Ao sair do teleprompter: finaliza gravação (o arquivo é salvo) e solta a câmera.
   useEffect(() => {
@@ -164,6 +195,13 @@ export function useNativeCamera() {
     qualityLabel: QUALITY_LABEL,
     flip,
     setQuality,
+    hdr: prefs.hdr && hdrSupported,
+    hdrSupported,
+    toggleHdr,
+    autoDrive: prefs.autoDrive,
+    setAutoDrive,
+    lastVideo,
+    sendToDrive,
     notice,
     dismissNotice: () => setNotice(null),
   }

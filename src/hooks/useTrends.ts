@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { apiFetch } from '../lib/api'
 
 export interface TrendTopic {
   title: string
@@ -21,7 +22,7 @@ export function useTrends() {
       // no-store: ignora o cache HTTP do browser (a zona Cloudflare
       // sobrescreve o Cache-Control da origem), para o botão "Atualizar"
       // sempre buscar dados frescos. O edge do Worker ainda cacheia 30min.
-      const res = await fetch('/api/trends', { cache: 'no-store' })
+      const res = await apiFetch('/api/trends', { cache: 'no-store' })
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null
         const msg =

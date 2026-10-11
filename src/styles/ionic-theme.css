@@ -1,0 +1,78 @@
+/* Tema Ionic (modo Material) alinhado aos tokens do Roteiro Studio — escuro fixo. */
+:root {
+  --ion-font-family: var(--font-body);
+
+  --ion-color-primary: #f0ac3c;
+  --ion-color-primary-rgb: 240, 172, 60;
+  --ion-color-primary-contrast: #1f1606;
+  --ion-color-primary-contrast-rgb: 31, 22, 6;
+  --ion-color-primary-shade: #d39735;
+  --ion-color-primary-tint: #f2b450;
+
+  --ion-color-danger: #e5322b;
+  --ion-color-danger-rgb: 229, 50, 43;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #ca2c26;
+  --ion-color-danger-tint: #e84740;
+
+  --ion-background-color: #16120d;
+  --ion-background-color-rgb: 22, 18, 13;
+  --ion-text-color: #f1ece3;
+  --ion-text-color-rgb: 241, 236, 227;
+
+  --ion-toolbar-background: #16120d;
+  --ion-tab-bar-background: #1d1812;
+  --ion-tab-bar-color: #a59d90;
+  --ion-tab-bar-color-selected: var(--ion-color-primary);
+  --ion-item-background: #1f1a13;
+  --ion-card-background: #1f1a13;
+  --ion-border-color: rgba(255, 255, 255, 0.08);
+  --ion-color-step-50: #211c15;
+  --ion-color-step-100: #2b251c;
+  --ion-color-step-150: #352e24;
+}
+
+ion-title,
+.page-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+ion-content {
+  --background: transparent;
+}
+
+ion-toolbar {
+  --border-width: 0;
+}
+
+ion-tab-bar {
+  --border: 1px solid rgba(255, 255, 255, 0.06);
+  height: calc(68px + var(--ion-safe-area-bottom, 0px));
+}
+
+ion-tab-button {
+  --color-selected: var(--ion-color-primary);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+ion-button {
+  --border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+ion-segment-button {
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0;
+  min-width: auto;
+}
+
+ion-chip {
+  font-weight: 600;
+}

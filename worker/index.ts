@@ -18,6 +18,29 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
+// O APK (Capacitor) roda a interface em https://localhost e chama esta API.
+const APP_ORIGINS = new Set(['https://localhost'])
+
+function corsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('Origin') ?? ''
+  if (!APP_ORIGINS.has(origin)) return {}
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  }
+}
+
+function withCors(request: Request, response: Response): Response {
+  const headers = corsHeaders(request)
+  if (Object.keys(headers).length === 0) return response
+  const wrapped = new Response(response.body, response)
+  for (const [key, value] of Object.entries(headers)) wrapped.headers.set(key, value)
+  return wrapped
+}
+
 function unauthorized(): Response {
   return new Response('Autenticação necessária.', {
     status: 401,
@@ -121,26 +144,35 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url)
 
-    if (!isAuthorized(request, env)) return unauthorized()
-
-    if (url.pathname === '/api/health') {
-      return json({
-        ok: true,
-        provider: 'openrouter',
-        model: env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
-      })
+    // Preflight do APK: responde antes da autenticação (o navegador não manda credenciais aqui).
+    if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+      return new Response(null, { status: 204, headers: corsHeaders(request) })
     }
 
-    if (url.pathname === '/api/trends') {
-      if (request.method !== 'GET') return json({ error: 'Método não permitido.' }, 405)
-      return handleTrends(ctx)
-    }
-
-    if (url.pathname === '/api/generate') {
-      if (request.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
-      return handleGenerate(request, env, ctx)
-    }
-
-    return env.ASSETS.fetch(request)
+    return withCors(request, await route(request, env, ctx, url))
   },
+}
+
+async function route(request: Request, env: Env, ctx: ExecutionContext, url: URL): Promise<Response> {
+  if (!isAuthorized(request, env)) return unauthorized()
+
+  if (url.pathname === '/api/health') {
+    return json({
+      ok: true,
+      provider: 'openrouter',
+      model: env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
+    })
+  }
+
+  if (url.pathname === '/api/trends') {
+    if (request.method !== 'GET') return json({ error: 'Método não permitido.' }, 405)
+    return handleTrends(ctx)
+  }
+
+  if (url.pathname === '/api/generate') {
+    if (request.method !== 'POST') return json({ error: 'Método não permitido.' }, 405)
+    return handleGenerate(request, env, ctx)
+  }
+
+  return env.ASSETS.fetch(request)
 }
